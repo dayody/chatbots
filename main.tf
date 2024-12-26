@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "eu-west-2"
+  region = "eu-west-2"  # Ensure this matches your intended AWS region
 }
 
 resource "aws_vpc" "main" {
@@ -12,7 +12,7 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-west-2a"
+  availability_zone       = "eu-west-2a"  # Ensure this matches a valid availability zone in your region
   map_public_ip_on_launch = true
   tags = {
     Name = "public-subnet"
@@ -68,7 +68,7 @@ resource "aws_security_group" "web_sg" {
 }
 
 resource "aws_instance" "web" {
-  ami           = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI
+  ami           = "ami-05c172c7f0d3aed00" # Ubuntu
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.public_subnet.id
   security_groups = [aws_security_group.web_sg.name]
