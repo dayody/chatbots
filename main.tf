@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-west-2"
+  region = "eu-west-2"
 }
 
 resource "aws_vpc" "main" {
@@ -42,7 +42,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_security_group" "ecs" {
+resource "aws_security_group" "web_sg" {
   vpc_id = aws_vpc.main.id
   ingress {
     from_port   = 80
@@ -51,8 +51,8 @@ resource "aws_security_group" "ecs" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    from_port   = 443
-    to_port     = 443
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -63,79 +63,26 @@ resource "aws_security_group" "ecs" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    Name = "ecs-sg"
+    Name = "web-sg"
   }
 }
 
-resource "aws_ecs_cluster" "main" {
-  name = "ecs-cluster"
-}
-
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_ecs_task_definition" "hello_task" {
-  family                   = "hello-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-
-  container_definitions = jsonencode([{
-    name      = "hello-app"
-    image     = "your-docker-image-url"
-    essential = true
-    portMappings = [{
-      containerPort = 80
-      hostPort      = 80
-    }]
-  }])
-}
-
-resource "aws_instance" "ecs_instances" {
-  count         = 2
-  ami           = "ami-05c172c7f0d3aed00" # Amazon Linux 2 AMI
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.public_subnet.id
-  security_groups = [aws_security_group.ecs.id]  # Corrected the security group attribute to a list
+  security_groups = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
               #!/bin/bash
-              echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
+              yum update -y
+              amazon-linux-extras install docker
+              service docker start
+              usermod -a -G docker ec2-user
+              docker run -d -p 80:80 your-docker-image-url
               EOF
 
   tags = {
-    Name = "ECSInstance-${count.index}"
-  }
-}
-
-resource "aws_ecs_service" "hello_service" {
-  name            = "hello-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.hello_task.arn
-  desired_count   = 1
-  launch_type     = "EC2"
-
-  network_configuration {
-    subnets          = [aws_subnet.public_subnet.id]
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = true
+    Name = "web-instance"
   }
 }
