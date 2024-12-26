@@ -57,7 +57,6 @@ jobs:
           target: 'http://your-ecs-service-url'
           cmd_options: '-t 60'
 
-  iac-security:
     runs-on: ubuntu-latest
 
     steps:
