@@ -1,0 +1,104 @@
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: SAST - CodeQL Analysis
+        uses: github/codeql-action/init@v1
+        with:
+          languages: python
+  sast:
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
+
+      - name: Build Docker image
+        run: docker build -t your-docker-image-url .
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          region: eu-west-2
+
+      - name: Push Docker image to Amazon ECR
+        run: |
+          docker tag your-docker-image-url:latest ${{ secrets.ECR_REGISTRY }}/your-docker-image-url:latest
+          docker push ${{ secrets.ECR_REGISTRY }}/your-docker-image-url:latest
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster chainlit-cluster --service chainlit-service --force-new-deployment --region us-west-2
+
+  dast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.6.0
+        with:
+          target: 'http://your-ecs-service-url'
+          cmd_options: '-t 60'
+
+  iac-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+    terraform:
+      name: Terraform
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2  
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+    iac-security:
+      - name: Install tfsec
+        run: |
+          curl -L "$(curl -s https://api.github.com/repos/aquasecurity/tfsec/releases/latest | grep -o -E "https://.+?_linux_amd64.tar.gz")" > tfsec.tar.gz
+          tar -xzf tfsec.tar.gz
+          sudo mv tfsec /usr/local/bin/
+
+      - name: Run tfsec
+        run: tfsec .
