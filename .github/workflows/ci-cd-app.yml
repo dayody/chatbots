@@ -27,7 +27,11 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install chainlit
+          pip install ctransformers chainlit
+          pip install pydantic==2.10.1 chainlit
 
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
