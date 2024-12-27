@@ -41,7 +41,7 @@ jobs:
 
       - name: Build and Push Docker Image
         env:
-          ECR_REGISTRY: 851725211248.dkr.ecr.<region>.amazonaws.com
+          ECR_REGISTRY: 851725211248.dkr.ecr.eu-west-2.amazonaws.com
           ECR_REPOSITORY: chatbot
           IMAGE_TAG: ${{ github.sha }}
         run: |
