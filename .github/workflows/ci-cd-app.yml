@@ -31,8 +31,8 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          echo "ECR_REGISTRY=<your-ecr-registry>" >> $GITHUB_ENV
-          echo "ECR_REPOSITORY=<your-ecr-repository>" >> $GITHUB_ENV
+          echo "ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Log in to Amazon ECR
@@ -44,8 +44,7 @@ jobs:
         run: docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
       - name: Push Docker image to Amazon ECR
-        run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   sast:
     name: Security Tests
