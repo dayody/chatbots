@@ -34,9 +34,14 @@ jobs:
         with:
           region: eu-west-2
 
+      - name: Ensure Repository Exists
+        run: |
+          aws ecr describe-repositories --repository-names chatbot --region $AWS_REGION || \
+          aws ecr create-repository --repository-name chatbot --region $AWS_REGION
+
       - name: Build and Push Docker Image
         env:
-          ECR_REGISTRY: 851725211248.dkr.ecr.eu-west-2.amazonaws.com
+          ECR_REGISTRY: 851725211248.dkr.ecr.<region>.amazonaws.com
           ECR_REPOSITORY: chatbot
           IMAGE_TAG: ${{ github.sha }}
         run: |
